@@ -1,5 +1,6 @@
 package com.nickstv.app.ui.settings
 
+import android.view.KeyEvent
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.*
 import androidx.compose.foundation.interaction.*
@@ -11,6 +12,7 @@ import androidx.compose.ui.*
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.input.key.onKeyEvent
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.*
@@ -126,8 +128,14 @@ private fun SettingsRow(
             )
             .then(
                 if (clickable) Modifier
-                    .clickable(interactionSource = interactionSource, indication = null) { onClick() }
                     .focusable(interactionSource = interactionSource)
+                    .onKeyEvent { event ->
+                        if (event.nativeKeyEvent.action == KeyEvent.ACTION_UP &&
+                            (event.nativeKeyEvent.keyCode == KeyEvent.KEYCODE_DPAD_CENTER ||
+                             event.nativeKeyEvent.keyCode == KeyEvent.KEYCODE_ENTER)
+                        ) { onClick(); true } else false
+                    }
+                    .clickable(interactionSource = interactionSource, indication = null) { onClick() }
                 else Modifier
             )
             .padding(horizontal = 20.dp, vertical = 14.dp),
