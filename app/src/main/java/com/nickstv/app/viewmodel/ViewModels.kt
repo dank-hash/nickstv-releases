@@ -202,18 +202,78 @@ class PlayerViewModel(
     private val watchlistRepo: WatchlistRepository = NicksTVApp.instance.watchlistRepository
 ) : ViewModel() {
 
+    // Known provider IDs — fetched once at startup via /api/providers
+    private val knownProviders = listOf(
+        "super_barbarian", "bowler", "miner", "headhunter",
+        "valkyrie", "hog_rider", "lavahound"
+    )
+
     private val _streamState = MutableStateFlow<UiState<StreamResponse>>(UiState.Loading)
     val streamState: StateFlow<UiState<StreamResponse>> = _streamState.asStateFlow()
 
     private val _metaState = MutableStateFlow<UiState<DetailResponse>>(UiState.Loading)
     val metaState: StateFlow<UiState<DetailResponse>> = _metaState.asStateFlow()
 
+    // All sources collected from every working provider
+    private val _allSources = MutableStateFlow<List<SourceEntry>>(emptyList())
+    val allSources: StateFlow<List<SourceEntry>> = _allSources.asStateFlow()
+
+    private val _sourcesLoading = MutableStateFlow(false)
+    val sourcesLoading: StateFlow<Boolean> = _sourcesLoading.asStateFlow()
+
     fun load(type: String, id: String, season: Int? = null, episode: Int? = null) {
         viewModelScope.launch {
             mediaRepo.getMeta(id, type).collect { _metaState.value = it }
         }
+        // Load default stream (auto-selected provider)
         viewModelScope.launch {
-            mediaRepo.getStream(type, id, null, season, episode).collect { _streamState.value = it }
+            mediaRepo.getStream(type, id, null, season, episode).collect { state ->
+                _streamState.value = state
+                // Once we have the default stream, also kick off full provider scan
+                if (state is UiState.Success) {
+                    loadAllSources(type, id, season, episode)
+                }
+            }
+        }
+    }
+
+    fun loadAllSources(type: String, id: String, season: Int? = null, episode: Int? = null) {
+        if (_sourcesLoading.value) return
+        _sourcesLoading.value = true
+        viewModelScope.launch {
+            val entries = mutableListOf<SourceEntry>()
+            val jobs = knownProviders.map { provider ->
+                launch {
+                    try {
+                        mediaRepo.getStream(type, id, provider, season, episode).collect { state ->
+                            if (state is UiState.Success) {
+                                val sources = state.data.sources ?: return@collect
+                                val provName = state.data.provider ?: provider
+                                sources.forEach { src ->
+                                    val url = src.url ?: return@forEach
+                                    if (url.isBlank()) return@forEach
+                                    synchronized(entries) {
+                                        entries.add(
+                                            SourceEntry(
+                                                providerName = provName.replace("_", " ")
+                                                    .split(" ").joinToString(" ") { it.replaceFirstChar { c -> c.uppercase() } },
+                                                serverLabel = src.server ?: provName,
+                                                quality = src.quality ?: "Unknown",
+                                                url = url
+                                            )
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                    } catch (_: Exception) {}
+                }
+            }
+            jobs.forEach { it.join() }
+            // Deduplicate by URL
+            val seen = mutableSetOf<String>()
+            _allSources.value = entries.filter { seen.add(it.url) }
+            _sourcesLoading.value = false
         }
     }
 

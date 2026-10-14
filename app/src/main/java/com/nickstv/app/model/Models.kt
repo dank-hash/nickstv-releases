@@ -245,8 +245,17 @@ data class StreamSource(
     val url: String?,
     val type: String?,
     val quality: String?,
+    val server: String?,
     val headers: Map<String, String>?,
     val skipProxy: Boolean?
+)
+
+// Flat entry used by the server picker UI
+data class SourceEntry(
+    val providerName: String,
+    val serverLabel: String,
+    val quality: String,
+    val url: String
 )
 
 data class Subtitle(
