@@ -5,6 +5,7 @@ import androidx.room.Room
 import com.nickstv.app.data.local.NicksTVDatabase
 import com.nickstv.app.data.remote.NetworkModule
 import com.nickstv.app.repository.MediaRepository
+import com.nickstv.app.repository.RealDebridRepository
 import com.nickstv.app.repository.UpdateRepository
 import com.nickstv.app.repository.WatchlistRepository
 
@@ -20,6 +21,9 @@ class NicksTVApp : Application() {
         private set
 
     lateinit var updateRepository: UpdateRepository
+        private set
+
+    lateinit var realDebridRepository: RealDebridRepository
         private set
 
     override fun onCreate() {
@@ -41,6 +45,7 @@ class NicksTVApp : Application() {
             database.continueWatchingDao()
         )
         updateRepository = UpdateRepository()
+        realDebridRepository = RealDebridRepository(applicationContext)
 
         instance = this
     }

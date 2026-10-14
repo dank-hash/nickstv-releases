@@ -29,7 +29,7 @@ import com.nickstv.app.viewmodel.DetailViewModel
 fun DetailScreen(
     mediaId: String,
     mediaType: String,
-    onNavigateToPlayer: (String, String, Int?, Int?) -> Unit,
+    onNavigateToPlayer: (String, String, Int?, Int?, String?) -> Unit,
     onNavigateToDetail: (String, String) -> Unit,
     onBack: () -> Unit,
     viewModel: DetailViewModel = viewModel()
@@ -57,7 +57,7 @@ fun DetailScreen(
                     onPlayClick = { season, episode ->
                         viewModel.markStarted(mediaId, mediaType, detail.displayTitle,
                             detail.posterUrl, detail.backdropUrl, detail.displayYear, season, episode)
-                        onNavigateToPlayer(mediaType, mediaId, season, episode)
+                        onNavigateToPlayer(mediaType, mediaId, season, episode, null)
                     },
                     onToggleWatchlist = {
                         viewModel.toggleWatchlist(

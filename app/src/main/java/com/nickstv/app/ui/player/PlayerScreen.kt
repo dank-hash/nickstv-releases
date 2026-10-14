@@ -40,6 +40,7 @@ fun PlayerScreen(
     mediaType: String,
     season: Int? = null,
     episode: Int? = null,
+    preSelectedUrl: String? = null,
     onBack: () -> Unit,
     viewModel: PlayerViewModel = viewModel()
 ) {
@@ -48,14 +49,14 @@ fun PlayerScreen(
     val allSources by viewModel.allSources.collectAsState()
     val sourcesLoading by viewModel.sourcesLoading.collectAsState()
 
-    // Active stream URL — starts with default, overridable by server picker
-    var activeUrl by remember { mutableStateOf<String?>(null) }
+    // Active stream URL — starts with pre-selected if supplied, otherwise first from default stream
+    var activeUrl by remember { mutableStateOf(preSelectedUrl) }
 
     LaunchedEffect(mediaId, mediaType, season, episode) {
         viewModel.load(mediaType, mediaId, season, episode)
     }
 
-    // Set initial URL from default stream
+    // Set initial URL from default stream only if not already set
     LaunchedEffect(streamState) {
         if (activeUrl == null && streamState is UiState.Success) {
             activeUrl = (streamState as UiState.Success).data.sources?.firstOrNull()?.url

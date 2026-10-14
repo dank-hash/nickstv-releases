@@ -7,6 +7,7 @@ import com.nickstv.app.data.local.ContinueWatchingEntity
 import com.nickstv.app.data.local.WatchlistEntity
 import com.nickstv.app.model.*
 import com.nickstv.app.repository.MediaRepository
+import com.nickstv.app.repository.RealDebridRepository
 import com.nickstv.app.repository.WatchlistRepository
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
@@ -73,7 +74,8 @@ class SearchViewModel(
 
 class DetailViewModel(
     private val mediaRepo: MediaRepository = NicksTVApp.instance.mediaRepository,
-    private val watchlistRepo: WatchlistRepository = NicksTVApp.instance.watchlistRepository
+    private val watchlistRepo: WatchlistRepository = NicksTVApp.instance.watchlistRepository,
+    private val rdRepo: RealDebridRepository = NicksTVApp.instance.realDebridRepository
 ) : ViewModel() {
 
     private val _detailState = MutableStateFlow<UiState<DetailResponse>>(UiState.Loading)
@@ -85,14 +87,52 @@ class DetailViewModel(
     private val _episodeState = MutableStateFlow<UiState<DetailResponse>>(UiState.Empty)
     val episodeState: StateFlow<UiState<DetailResponse>> = _episodeState.asStateFlow()
 
+    // RD sources loaded in background on detail page
+    private val _rdSources = MutableStateFlow<List<SourceEntry>>(emptyList())
+    val rdSources: StateFlow<List<SourceEntry>> = _rdSources.asStateFlow()
+
+    private val _rdLoading = MutableStateFlow(false)
+    val rdLoading: StateFlow<Boolean> = _rdLoading.asStateFlow()
+
+    private val _imdbId = MutableStateFlow<String?>(null)
+    val imdbId: StateFlow<String?> = _imdbId.asStateFlow()
+
+    val hasRdToken: Boolean get() = rdRepo.hasToken
+
     private var _currentId: String = "0"
     private var _currentType: String = "movie"
 
     fun load(id: String, type: String) {
         _currentId = id
         _currentType = type
+        _rdSources.value = emptyList()
         viewModelScope.launch {
-            mediaRepo.getMeta(id, type).collect { _detailState.value = it }
+            mediaRepo.getMeta(id, type).collect { state ->
+                _detailState.value = state
+                // Once meta loads, resolve IMDB ID and kick off RD scan
+                if (state is UiState.Success && _imdbId.value == null) {
+                    resolveAndLoadRd(id, type)
+                }
+            }
+        }
+    }
+
+    private fun resolveAndLoadRd(tmdbId: String, type: String) {
+        if (!rdRepo.hasToken) return
+        viewModelScope.launch {
+            val imdb = rdRepo.resolveImdbId(tmdbId, type)
+            _imdbId.value = imdb
+            if (imdb != null) {
+                _rdLoading.value = true
+                rdRepo.loadRdSources(
+                    imdbId = imdb,
+                    mediaType = type,
+                    season = if (type == "tv") _selectedSeason.value else null,
+                    episode = null, // detail page loads all available; episode filter happens in player
+                    onProgress = { partial -> _rdSources.value = partial }
+                )
+                _rdLoading.value = false
+            }
         }
     }
 
@@ -199,10 +239,10 @@ class WatchlistViewModel(
 
 class PlayerViewModel(
     private val mediaRepo: MediaRepository = NicksTVApp.instance.mediaRepository,
-    private val watchlistRepo: WatchlistRepository = NicksTVApp.instance.watchlistRepository
+    private val watchlistRepo: WatchlistRepository = NicksTVApp.instance.watchlistRepository,
+    private val rdRepo: RealDebridRepository = NicksTVApp.instance.realDebridRepository
 ) : ViewModel() {
 
-    // Known provider IDs — fetched once at startup via /api/providers
     private val knownProviders = listOf(
         "super_barbarian", "bowler", "miner", "headhunter",
         "valkyrie", "hog_rider", "lavahound"
@@ -214,7 +254,6 @@ class PlayerViewModel(
     private val _metaState = MutableStateFlow<UiState<DetailResponse>>(UiState.Loading)
     val metaState: StateFlow<UiState<DetailResponse>> = _metaState.asStateFlow()
 
-    // All sources collected from every working provider
     private val _allSources = MutableStateFlow<List<SourceEntry>>(emptyList())
     val allSources: StateFlow<List<SourceEntry>> = _allSources.asStateFlow()
 
@@ -225,11 +264,9 @@ class PlayerViewModel(
         viewModelScope.launch {
             mediaRepo.getMeta(id, type).collect { _metaState.value = it }
         }
-        // Load default stream (auto-selected provider)
         viewModelScope.launch {
             mediaRepo.getStream(type, id, null, season, episode).collect { state ->
                 _streamState.value = state
-                // Once we have the default stream, also kick off full provider scan
                 if (state is UiState.Success) {
                     loadAllSources(type, id, season, episode)
                 }
@@ -242,7 +279,9 @@ class PlayerViewModel(
         _sourcesLoading.value = true
         viewModelScope.launch {
             val entries = mutableListOf<SourceEntry>()
-            val jobs = knownProviders.map { provider ->
+
+            // ── FrameXTV providers ────────────────────────────────────────────
+            val fxtJobs = knownProviders.map { provider ->
                 launch {
                     try {
                         mediaRepo.getStream(type, id, provider, season, episode).collect { state ->
@@ -253,24 +292,49 @@ class PlayerViewModel(
                                     val url = src.url ?: return@forEach
                                     if (url.isBlank()) return@forEach
                                     synchronized(entries) {
-                                        entries.add(
-                                            SourceEntry(
-                                                providerName = provName.replace("_", " ")
-                                                    .split(" ").joinToString(" ") { it.replaceFirstChar { c -> c.uppercase() } },
-                                                serverLabel = src.server ?: provName,
-                                                quality = src.quality ?: "Unknown",
-                                                url = url
-                                            )
-                                        )
+                                        entries.add(SourceEntry(
+                                            providerName = provName.replace("_", " ")
+                                                .split(" ").joinToString(" ") { it.replaceFirstChar { c -> c.uppercase() } },
+                                            serverLabel = src.server ?: provName,
+                                            quality = src.quality ?: "Unknown",
+                                            url = url
+                                        ))
                                     }
+                                    // Emit partial update so UI shows sources as they arrive
+                                    val seen = mutableSetOf<String>()
+                                    _allSources.value = entries.filter { seen.add(it.url) }
                                 }
                             }
                         }
                     } catch (_: Exception) {}
                 }
             }
-            jobs.forEach { it.join() }
-            // Deduplicate by URL
+            fxtJobs.forEach { it.join() }
+
+            // ── Real-Debrid sources ───────────────────────────────────────────
+            if (rdRepo.hasToken) {
+                val imdbId = rdRepo.resolveImdbId(id, type)
+                if (imdbId != null) {
+                    rdRepo.loadRdSources(
+                        imdbId = imdbId,
+                        mediaType = type,
+                        season = season,
+                        episode = episode,
+                        onProgress = { rdPartial ->
+                            synchronized(entries) {
+                                // Merge RD sources in — replace existing RD entries
+                                val nonRd = entries.filter { it.providerName != "Real-Debrid" }
+                                entries.clear()
+                                entries.addAll(nonRd)
+                                entries.addAll(rdPartial)
+                            }
+                            val seen = mutableSetOf<String>()
+                            _allSources.value = entries.filter { seen.add(it.url) }
+                        }
+                    )
+                }
+            }
+
             val seen = mutableSetOf<String>()
             _allSources.value = entries.filter { seen.add(it.url) }
             _sourcesLoading.value = false

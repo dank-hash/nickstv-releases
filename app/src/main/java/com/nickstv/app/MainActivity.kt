@@ -145,8 +145,8 @@ fun NicksTVAppContent() {
                         DetailScreen(
                             mediaId = mediaId,
                             mediaType = mediaType,
-                            onNavigateToPlayer = { type, id, season, episode ->
-                                navController.navigate(NavRoutes.player(type, id, season, episode))
+                            onNavigateToPlayer = { type, id, season, episode, streamUrl ->
+                                navController.navigate(NavRoutes.player(type, id, season, episode, streamUrl))
                             },
                             onNavigateToDetail = { type, id ->
                                 navController.navigate(NavRoutes.detail(type, id))
@@ -161,18 +161,21 @@ fun NicksTVAppContent() {
                             navArgument("mediaType") { type = NavType.StringType },
                             navArgument("mediaId") { type = NavType.StringType },
                             navArgument("season") { type = NavType.StringType; nullable = true; defaultValue = null },
-                            navArgument("episode") { type = NavType.StringType; nullable = true; defaultValue = null }
+                            navArgument("episode") { type = NavType.StringType; nullable = true; defaultValue = null },
+                            navArgument("streamUrl") { type = NavType.StringType; nullable = true; defaultValue = null }
                         )
                     ) { back ->
                         val mediaType = back.arguments?.getString("mediaType") ?: "movie"
                         val mediaId = back.arguments?.getString("mediaId") ?: "0"
                         val season = back.arguments?.getString("season")?.toIntOrNull()
                         val episode = back.arguments?.getString("episode")?.toIntOrNull()
+                        val streamUrl = NavRoutes.decodeStreamUrl(back.arguments?.getString("streamUrl"))
                         PlayerScreen(
                             mediaId = mediaId,
                             mediaType = mediaType,
                             season = season,
                             episode = episode,
+                            preSelectedUrl = streamUrl,
                             onBack = { navController.popBackStack() }
                         )
                     }

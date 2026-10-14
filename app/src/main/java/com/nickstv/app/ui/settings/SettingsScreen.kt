@@ -15,6 +15,8 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.key.onKeyEvent
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.*
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.nickstv.app.BuildConfig
@@ -26,9 +28,12 @@ import com.nickstv.app.viewmodel.SettingsViewModel
 @Composable
 fun SettingsScreen(viewModel: SettingsViewModel = viewModel()) {
     val updateState by viewModel.updateState.collectAsState()
+    val rdTokenInput by viewModel.rdTokenInput.collectAsState()
+    val rdValidationState by viewModel.rdValidationState.collectAsState()
     val context = LocalContext.current
     var showUpdateDialog by remember { mutableStateOf(false) }
     var latestRelease by remember { mutableStateOf<GitHubRelease?>(null) }
+    var showRdToken by remember { mutableStateOf(false) }
 
     LaunchedEffect(updateState) {
         when (val s = updateState) {
@@ -44,12 +49,43 @@ fun SettingsScreen(viewModel: SettingsViewModel = viewModel()) {
         modifier = Modifier
             .fillMaxSize()
             .background(NicksTheme.BgPrimary)
+            .verticalScroll(rememberScrollState())
             .padding(horizontal = 48.dp, vertical = 28.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
         Text("Settings", color = NicksTheme.TextPrimary, fontSize = 26.sp, fontWeight = FontWeight.Bold)
 
         Spacer(Modifier.height(8.dp))
+
+        // ── Real-Debrid ────────────────────────────────────────────────────────
+        Text(
+            "Real-Debrid",
+            color = NicksTheme.AccentRed,
+            fontSize = 12.sp,
+            fontWeight = FontWeight.Bold,
+            modifier = Modifier.padding(start = 4.dp, bottom = 4.dp)
+        )
+
+        RealDebridSection(
+            tokenInput = rdTokenInput,
+            validationState = rdValidationState,
+            showToken = showRdToken,
+            onToggleShow = { showRdToken = !showRdToken },
+            onTokenChange = viewModel::updateRdTokenInput,
+            onValidate = viewModel::saveAndValidateRdToken,
+            onClear = viewModel::clearRdToken
+        )
+
+        Spacer(Modifier.height(8.dp))
+
+        // ── App ───────────────────────────────────────────────────────────────
+        Text(
+            "App",
+            color = NicksTheme.AccentRed,
+            fontSize = 12.sp,
+            fontWeight = FontWeight.Bold,
+            modifier = Modifier.padding(start = 4.dp, bottom = 4.dp)
+        )
 
         // Version info
         SettingsRow(
@@ -85,7 +121,6 @@ fun SettingsScreen(viewModel: SettingsViewModel = viewModel()) {
             }
         )
 
-        // Placeholder settings
         SettingsRow(title = "Video Quality", subtitle = "Auto (coming soon)", clickable = false)
         SettingsRow(title = "Subtitles", subtitle = "Off (coming soon)", clickable = false)
         SettingsRow(title = "About", subtitle = "Nicks TV — Built with ❤ for Fire TV", clickable = false)
@@ -206,3 +241,91 @@ private fun UpdateDialog(
         tonalElevation = 8.dp
     )
 }
+
+@Composable
+private fun RealDebridSection(
+    tokenInput: String,
+    validationState: SettingsViewModel.RdValidationState,
+    showToken: Boolean,
+    onToggleShow: () -> Unit,
+    onTokenChange: (String) -> Unit,
+    onValidate: () -> Unit,
+    onClear: () -> Unit
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(12.dp))
+            .background(NicksTheme.BgCard)
+            .border(0.5.dp, NicksTheme.CardBorder, RoundedCornerShape(12.dp))
+            .padding(16.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
+        // Status banner
+        val (statusText, statusColor) = when (validationState) {
+            is SettingsViewModel.RdValidationState.Idle ->
+                Pair("No token set — Real-Debrid sources will not appear", NicksTheme.TextTertiary)
+            is SettingsViewModel.RdValidationState.Validating ->
+                Pair("Validating…", NicksTheme.TextSecondary)
+            is SettingsViewModel.RdValidationState.Saved ->
+                Pair("Token saved — tap Validate to confirm account", NicksTheme.RatingGold)
+            is SettingsViewModel.RdValidationState.Valid ->
+                Pair("✓ Connected: ${validationState.username}", Color(0xFF4CAF50))
+            is SettingsViewModel.RdValidationState.Error ->
+                Pair("✗ ${validationState.message}", NicksTheme.AccentRed)
+        }
+        Text(statusText, color = statusColor, fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
+
+        // Token input field
+        OutlinedTextField(
+            value = tokenInput,
+            onValueChange = onTokenChange,
+            label = { Text("Real-Debrid API Token", color = NicksTheme.TextSecondary, fontSize = 12.sp) },
+            placeholder = { Text("Paste token here…", color = NicksTheme.TextTertiary, fontSize = 13.sp) },
+            singleLine = true,
+            visualTransformation = if (showToken) VisualTransformation.None else PasswordVisualTransformation(),
+            trailingIcon = {
+                val interactionSource = remember { MutableInteractionSource() }
+                val focused by interactionSource.collectIsFocusedAsState()
+                Box(
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(6.dp))
+                        .background(if (focused) NicksTheme.BgSurface else Color.Transparent)
+                        .border(if (focused) 1.dp else 0.dp, NicksTheme.FocusBorder, RoundedCornerShape(6.dp))
+                        .clickable(interactionSource = interactionSource, indication = null) { onToggleShow() }
+                        .focusable(interactionSource = interactionSource)
+                        .padding(horizontal = 8.dp, vertical = 4.dp)
+                ) {
+                    Text(if (showToken) "Hide" else "Show", color = NicksTheme.TextSecondary, fontSize = 11.sp)
+                }
+            },
+            colors = OutlinedTextFieldDefaults.colors(
+                focusedBorderColor = NicksTheme.FocusBorder,
+                unfocusedBorderColor = NicksTheme.CardBorder,
+                focusedTextColor = NicksTheme.TextPrimary,
+                unfocusedTextColor = NicksTheme.TextPrimary,
+                cursorColor = NicksTheme.AccentRed
+            ),
+            modifier = Modifier.fillMaxWidth()
+        )
+
+        // Action buttons
+        Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            FocusableButton(
+                label = if (validationState is SettingsViewModel.RdValidationState.Validating) "Validating…" else "Save & Validate",
+                onClick = onValidate
+            )
+            if (tokenInput.isNotBlank() || validationState !is SettingsViewModel.RdValidationState.Idle) {
+                FocusableButton(label = "Clear", onClick = onClear)
+            }
+        }
+
+        // Help text
+        Text(
+            "Get your API token at real-debrid.com/apitoken",
+            color = NicksTheme.TextTertiary,
+            fontSize = 10.sp
+        )
+    }
+}
+
