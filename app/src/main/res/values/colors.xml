@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Backgrounds -->
+    <color name="background_primary">#0A0A0F</color>
+    <color name="background_secondary">#12121A</color>
+    <color name="background_card">#1A1A24</color>
+    <color name="background_surface">#1E1E2E</color>
+    <color name="background_overlay">#CC000000</color>
+
+    <!-- Accent -->
+    <color name="accent_primary">#E50914</color>
+    <color name="accent_secondary">#FF3B30</color>
+    <color name="accent_blue">#1E90FF</color>
+    <color name="accent_blue_dim">#0D4F8C</color>
+
+    <!-- Text -->
+    <color name="text_primary">#FFFFFFFF</color>
+    <color name="text_secondary">#B3FFFFFF</color>
+    <color name="text_tertiary">#66FFFFFF</color>
+    <color name="text_disabled">#33FFFFFF</color>
+
+    <!-- Focus / selected -->
+    <color name="focus_ring">#E50914</color>
+    <color name="focus_ring_blue">#1E90FF</color>
+    <color name="focus_card_background">#2A2A3A</color>
+
+    <!-- Rating -->
+    <color name="rating_gold">#FFD700</color>
+
+    <!-- Card border -->
+    <color name="card_border">#2A2A35</color>
+    <color name="card_border_focused">#E50914</color>
+
+    <!-- Nav bar -->
+    <color name="nav_background">#0D0D14</color>
+    <color name="nav_selected">#E50914</color>
+    <color name="nav_unselected">#66FFFFFF</color>
+
+    <!-- Shimmer -->
+    <color name="shimmer_base">#1E1E2E</color>
+    <color name="shimmer_highlight">#2A2A3E</color>
+
+    <!-- Player overlay -->
+    <color name="player_overlay_bg">#99000000</color>
+    <color name="seek_bar_bg">#33FFFFFF</color>
+    <color name="seek_bar_progress">#E50914</color>
+</resources>

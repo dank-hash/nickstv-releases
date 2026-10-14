@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Nicks TV</string>
+    <string name="home">Home</string>
+    <string name="search">Search</string>
+    <string name="browse">Browse</string>
+    <string name="watchlist">Watchlist</string>
+    <string name="settings">Settings</string>
+    <string name="play">Play</string>
+    <string name="add_to_watchlist">Add to Watchlist</string>
+    <string name="remove_from_watchlist">Remove from Watchlist</string>
+    <string name="search_hint">Search movies and TV shows…</string>
+    <string name="no_results">No results found</string>
+    <string name="error_loading">Failed to load content</string>
+    <string name="retry">Retry</string>
+    <string name="check_for_updates">Check for Updates</string>
+    <string name="up_to_date">You\'re up to date!</string>
+    <string name="update_available">Update Available</string>
+    <string name="download_and_install">Download &amp; Install</string>
+    <string name="cancel">Cancel</string>
+    <string name="clear_cache">Clear Cache</string>
+    <string name="version">Version</string>
+    <string name="continue_watching">Continue Watching</string>
+    <string name="trending_movies">Trending Movies</string>
+    <string name="trending_tv">Trending TV</string>
+    <string name="popular_movies">Popular Movies</string>
+    <string name="popular_tv">Popular TV Shows</string>
+    <string name="recommendations">Recommended For You</string>
+    <string name="similar">More Like This</string>
+    <string name="cast">Cast</string>
+    <string name="seasons">Seasons</string>
+    <string name="episodes">Episodes</string>
+    <string name="season_format">Season %1$d</string>
+    <string name="episode_format">Ep %1$d: %2$s</string>
+    <string name="movie">Movie</string>
+    <string name="tv_show">TV Show</string>
+    <string name="anime">Anime</string>
+    <string name="voice_search">Voice Search</string>
+    <string name="filter">Filter</string>
+    <string name="sort_by">Sort By</string>
+    <string name="genre">Genre</string>
+    <string name="year">Year</string>
+    <string name="loading">Loading…</string>
+    <string name="watch_now">Watch Now</string>
+</resources>
