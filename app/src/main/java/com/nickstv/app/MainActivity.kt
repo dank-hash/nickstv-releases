@@ -20,6 +20,9 @@ import androidx.compose.ui.unit.*
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
+import android.app.ActivityManager
+import android.graphics.BitmapFactory
+import com.nickstv.app.R
 import androidx.navigation.*
 import androidx.navigation.compose.*
 import com.nickstv.app.ui.*
@@ -35,6 +38,16 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
+        // Set task description so app appears in recents with correct name/icon
+        @Suppress("DEPRECATION")
+        setTaskDescription(
+            ActivityManager.TaskDescription(
+                "Nicks TV",
+                BitmapFactory.decodeResource(resources, R.mipmap.ic_launcher),
+                android.graphics.Color.parseColor("#0A0A0F")
+            )
+        )
 
         // Full-screen / immersive for Fire TV
         WindowCompat.setDecorFitsSystemWindows(window, false)

@@ -114,7 +114,12 @@ class UpdateRepository(
 ) {
 
     suspend fun getLatestRelease(owner: String, repo: String, token: String): UiState<GitHubRelease> {
-        return safeApiCall { api.getLatestRelease("token $token", owner, repo) }
+        // Use unauthenticated endpoint for public repos; fall back to auth if token provided
+        return if (token.isBlank()) {
+            safeApiCall { api.getLatestRelease(owner, repo) }
+        } else {
+            safeApiCall { api.getLatestReleaseAuth("token $token", owner, repo) }
+        }
     }
 
     suspend fun getAuthenticatedUser(token: String): UiState<GitHubUser> {

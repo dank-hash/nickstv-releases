@@ -20,8 +20,10 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.*
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.media3.common.C
 import androidx.media3.common.MediaItem
 import androidx.media3.common.Player
+import androidx.media3.common.TrackSelectionParameters
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.ui.PlayerView
 import com.nickstv.app.model.UiState
@@ -152,6 +154,12 @@ private fun ExoPlayerView(streamUrl: String, onKeyEvent: (Int) -> Unit) {
 
     val exoPlayer = remember {
         ExoPlayer.Builder(context).build().apply {
+            // Prefer AVC (H264) over HEVC to avoid codec issues on Fire TV
+            // Cap at 1080p to avoid trying 4K HDR streams that may not decode
+            trackSelectionParameters = TrackSelectionParameters.Builder(context)
+                .setPreferredVideoMimeTypes("video/avc", "video/mp4v-es")
+                .setMaxVideoSize(1920, 1080)
+                .build()
             setMediaItem(MediaItem.fromUri(streamUrl))
             prepare()
             playWhenReady = true

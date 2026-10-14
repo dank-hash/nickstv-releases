@@ -89,8 +89,15 @@ interface GitHubApiService {
     @GET("user")
     suspend fun getUser(@Header("Authorization") token: String): Response<GitHubUser>
 
+    // No auth required for public repos — token param is nullable/optional
     @GET("repos/{owner}/{repo}/releases/latest")
     suspend fun getLatestRelease(
+        @Path("owner") owner: String,
+        @Path("repo") repo: String
+    ): Response<GitHubRelease>
+
+    @GET("repos/{owner}/{repo}/releases/latest")
+    suspend fun getLatestReleaseAuth(
         @Header("Authorization") token: String,
         @Path("owner") owner: String,
         @Path("repo") repo: String
